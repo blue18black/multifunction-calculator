@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CalcPro — 面倒な計算ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0B1220;
+    --surface:  #131E30;
+    --card:     #1A2740;
+    --border:   #243350;
+    --accent:   #3DFFC0;
+    --accent2:  #5EA4FF;
+    --text:     #D8E4F5;
+    --muted:    #6A88AA;
+    --error:    #FF6B6B;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 32px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  header p {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    gap: 2px;
+    padding: 20px 32px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 8px 8px 0 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); background: var(--card); }
+  .tab.active {
+    color: var(--accent);
+    background: var(--card);
+    border-color: var(--border);
+    border-bottom: 2px solid var(--accent);
+  }
+  .tab-icon { font-size: 0.9rem; }
+
+  /* ── Main panel ── */
+  .panel-wrap {
+    margin: 0 32px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0 12px 12px 12px;
+    min-height: 480px;
+    padding: 28px 32px;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Panel title ── */
+  .panel-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── Form elements ── */
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  input[type="number"], input[type="text"], select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 100px;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input.wide { min-width: 200px; }
+  input.med  { min-width: 140px; }
+  input.sm   { min-width: 80px; width: 80px; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #061018;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.97); }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    font-size: 0.78rem;
+  }
+  .btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Result box ── */
+  .result-box {
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    min-height: 100px;
+    display: none;
+  }
+  .result-box.visible { display: block; }
+  .result-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .result-main {
+    font-family: var(--mono);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  .result-sub {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .result-chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .chip-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 4px; }
+  .chip-val   { font-family: var(--mono); font-size: 0.95rem; color: var(--text); }
+
+  .error-msg { color: var(--error); font-size: 0.85rem; font-family: var(--mono); }
+
+  /* ── Steps display ── */
+  .steps { margin-top: 12px; }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-n {
+    min-width: 22px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent2);
+    padding-top: 1px;
+  }
+  .step-text { font-family: var(--mono); color: var(--text); line-height: 1.5; }
+
+  /* ── Equation display ── */
+  .eq-display {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--accent2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .panel-wrap, .tab-bar { margin: 0 12px; padding-left: 16px; padding-right: 16px; }
+    header { padding: 20px 16px 0; }
+    .panel-wrap { padding: 20px 16px; }
+  }
+
+  /* ── Typewriter animation ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .result-box.visible { animation: fadeUp 0.2s ease; }
+
+  /* ── Number base table ── */
+  .base-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+  }
+  .base-table th {
+    text-align: left;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .base-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .base-table tr:last-child td { border-bottom: none; }
+  .base-table .hl { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CalcPro</h1>
+  <p>電卓じゃ面倒な計算を、ここで。</p>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" data-tab="base">    <span class="tab-icon">🔢</span> 進数変換</div>
+  <div class="tab" data-tab="linear">  <span class="tab-icon">⚖️</span> 方程式</div>
+  <div class="tab" data-tab="prime">   <span class="tab-icon">🔍</span> 素因数分解</div>
+  <div class="tab" data-tab="gcd">     <span class="tab-icon">🔗</span> GCD / LCM</div>
+  <div class="tab" data-tab="simul">   <span class="tab-icon">📐</span> 連立方程式</div>
+  <div class="tab" data-tab="loan">    <span class="tab-icon">💴</span> ローン計算</div>
+  <div class="tab" data-tab="stat">    <span class="tab-icon">📊</span> 統計</div>
+</div>
+
+<div class="panel-wrap">
+
+  <!-- ── 進数変換 ── -->
+  <div class="panel active" id="panel-base">
+    <div class="panel-title">進数変換 — Number Base Conversion</div>
+    <div class="row">
+      <div class="field">
+        <label>入力値</label>
+        <input type="text" id="base-input" class="wide" placeholder="例: 255" oninput="calcBase()">
+      </div>
+      <div class="field">
+        <label>入力の基数</label>
+        <select id="base-from" onchange="calcBase()">
+          <option value="10">10進数</option>
+          <option value="2">2進数</option>
+          <option value="8">8進数</option>
+          <option value="16">16進数</option>
+        </select>
+      </div>
+    </div>
+    <div class="result-box" id="base-result">
+      <div class="result-label">変換結果</div>
+      <table class="base-table">
+        <thead><tr><th>基数</th><th>表現</th></tr></thead>
+        <tbody id="base-table-body"></tbody>
+      </table>
+      <div class="result-sub" id="base-bits"></div>
+    </div>
+  </div>
+
+  <!-- ── 方程式 ── -->
+  <div class="panel" id="panel-linear">
+    <div class="panel-title">方程式 — Ax + B(1−x) = Cx + D(1−x)</div>
+    <div class="eq-display" id="eq-preview">係数を入力すると式が表示されます</div>
+    <div class="row">
+      <div class="field"><label>A</label><input type="number" id="eq-a" class="sm" value="5" oninput="updateEqPreview()"></div>
+      <div class="field"><label>B</label><input type="number" id="eq-b" class="sm" value="2" oninput="updateEqPreview()"></div>
+      <div class="field"><label>C</label><input type="number" id="eq-c" class="sm" value="3" oninput="updateEqPreview()"></div>
+      <div class="field"><label>D</label><input type="number" id="eq-d" class="sm" value="4" oninput="updateEqPreview()"></div>
+      <button class="btn" onclick="calcLinear()">計算</button>
+    </div>
+    <div class="result-box" id="linear-result">
+      <div class="result-label">解</div>
+      <div class="result-main" id="linear-ans"></div>
+      <div class="steps" id="linear-steps"></div>
+    </div>
+  </div>
+
+  <!-- ── 素因数分解 ── -->
+  <div class="panel" id="panel-prime">
+    <div class="panel-title">素因数分解 — Prime Factorization</div>
+    <div class="row">
+      <div class="field">
+        <label>整数</label>
+        <input type="number" id="prime-input" class="wide" placeholder="例: 360" min="2">
+      </div>
+      <button class="btn" onclick="calcPrime()">分解</button>
+    </div>
+    <div class="result-box" id="prime-result">
+      <div class="result-label">素因数分解</div>
+      <div class="result-main" id="prime-ans"></div>
+      <div class="result-sub" id="prime-sub"></div>
+      <div class="steps" id="prime-steps"></div>
+    </div>
+  </div>
+
+  <!-- ── GCD / LCM ── -->
+  <div class="panel" id="panel-gcd">
+    <div class="panel-title">最大公約数 / 最小公倍数 — GCD / LCM</div>
+    <div class="row">
+      <div class="field">
+        <label>数値（スペース区切りで複数可）</label>
+        <input type="text" id="gcd-input" class="wide" placeholder="例: 12 18 24">
+      </div>
+      <button class="btn" onclick="calcGcd()">計算</button>
+    </div>
+    <div class="result-box" id="gcd-result">
+      <div class="result-label">結果</div>
+      <div class="result-grid" id="gcd-grid"></div>
+      <div class="result-sub" id="gcd-steps"></div>
+    </div>
+  </div>
+
+  <!-- ── 連立方程式 ── -->
+  <div class="panel" id="panel-simul">
+    <div class="panel-title">連立方程式 — Systems of Equations (2変数)</div>
+    <div style="margin-bottom:12px; font-size:0.8rem; color:var(--muted);">
+      a₁x + b₁y = c₁ &nbsp;/&nbsp; a₂x + b₂y = c₂
+    </div>
+    <div class="row">
+      <div class="field"><label>a₁</label><input type="number" id="s-a1" class="sm" value="2"></div>
+      <div class="field"><label>b₁</label><input type="number" id="s-b1" class="sm" value="3"></div>
+      <div class="field"><label>c₁</label><input type="number" id="s-c1" class="sm" value="8"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>a₂</label><input type="number" id="s-a2" class="sm" value="1"></div>
+      <div class="field"><label>b₂</label><input type="number" id="s-b2" class="sm" value="-1"></div>
+      <div class="field"><label>c₂</label><input type="number" id="s-c2" class="sm" value="1"></div>
+    </div>
+    <button class="btn" onclick="calcSimul()">解く</button>
+    <div class="result-box" id="simul-result">
+      <div class="result-label">解</div>
+      <div class="result-grid" id="simul-grid"></div>
+      <div class="steps" id="simul-steps"></div>
+    </div>
+  </div>
+
+  <!-- ── ローン計算 ── -->
+  <div class="panel" id="panel-loan">
+    <div class="panel-title">ローン計算 — Loan Calculator</div>
+    <div class="row">
+      <div class="field">
+        <label>借入金額（円）</label>
+        <input type="number" id="loan-principal" class="med" placeholder="3000000" value="3000000">
+      </div>
+      <div class="field">
+        <label>年利（%）</label>
+        <input type="number" id="loan-rate" class="sm" placeholder="1.5" value="1.5" step="0.01">
+      </div>
+      <div class="field">
+        <label>返済期間（年）</label>
+        <input type="number" id="loan-years" class="sm" placeholder="35" value="35">
+      </div>
+      <button class="btn" onclick="calcLoan()">計算</button>
+    </div>
+    <div class="result-box" id="loan-result">
+      <div class="result-label">シミュレーション結果</div>
+      <div class="result-grid" id="loan-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── 統計 ── -->
+  <div class="panel" id="panel-stat">
+    <div class="panel-title">統計 — Statistics</div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label>数値（スペース or カンマ区切り）</label>
+        <input type="text" id="stat-input" class="wide" placeholder="例: 10 20 15 30 25">
+      </div>
+      <button class="btn" onclick="calcStat()">計算</button>
+    </div>
+    <div class="result-box" id="stat-result">
+      <div class="result-label">統計量</div>
+      <div class="result-grid" id="stat-grid"></div>
+      <div class="result-sub" id="stat-sorted"></div>
+    </div>
+  </div>
+
+</div><!-- /panel-wrap -->
+
+<script>
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+function showResult(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('visible');
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add('visible');
+}
+
+// ── 進数変換 ──
+function calcBase() {
+  const raw = document.getElementById('base-input').value.trim();
+  const from = parseInt(document.getElementById('base-from').value);
+  if (!raw) { document.getElementById('base-result').classList.remove('visible'); return; }
+
+  const dec = parseInt(raw, from);
+  if (isNaN(dec)) { document.getElementById('base-result').classList.remove('visible'); return; }
+
+  const rows = [
+    ['2',  '2進数',  dec.toString(2)],
+    ['8',  '8進数',  dec.toString(8)],
+    ['10', '10進数', dec.toString(10)],
+    ['16', '16進数', dec.toString(16).toUpperCase()],
+  ];
+
+  const tbody = document.getElementById('base-table-body');
+  tbody.innerHTML = rows.map(([base, label, val]) => {
+    const isFrom = base === String(from);
+    return `<tr>
+      <td style="color:var(--muted)">${label}（基数${base}）</td>
+      <td class="${isFrom ? 'hl' : ''}">${val}${isFrom ? ' ← 入力' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  // bit breakdown for binary
+  const bits = dec.toString(2);
+  const padded = bits.padStart(Math.ceil(bits.length / 8) * 8, '0');
+  const groups = padded.match(/.{1,8}/g) || [];
+  document.getElementById('base-bits').textContent = `ビット列: ${groups.join(' ')}  (${bits.length}ビット)`;
+
+  showResult('base-result');
+}
+window.addEventListener('load', () => { document.getElementById('base-input').value = '255'; calcBase(); });
+
+// ── 方程式 Ax+B(1-x)=Cx+D(1-x) ──
+function updateEqPreview() {
+  const [a,b,c,d] = ['a','b','c','d'].map(k => document.getElementById('eq-'+k).value || '?');
+  document.getElementById('eq-preview').textContent = `${a}x + ${b}(1 − x)  =  ${c}x + ${d}(1 − x)`;
+}
+updateEqPreview();
+
+function calcLinear() {
+  const a = parseFloat(document.getElementById('eq-a').value);
+  const b = parseFloat(document.getElementById('eq-b').value);
+  const c = parseFloat(document.getElementById('eq-c').value);
+  const d = parseFloat(document.getElementById('eq-d').value);
+  if ([a,b,c,d].some(isNaN)) return;
+
+  // Ax + B(1-x) = Cx + D(1-x)
+  // Ax + B - Bx = Cx + D - Dx
+  // (A-B)x + B = (C-D)x + D
+  // (A-B-(C-D))x = D - B
+  // ((A-B-C+D))x = D - B
+  const lCoef = (a - b) - (c - d);  // left coefficient
+  const rhs   = d - b;
+  const ansEl = document.getElementById('linear-ans');
+  const stepsEl = document.getElementById('linear-steps');
+
+  const steps = [
+    `${a}x + ${b}(1 − x) = ${c}x + ${d}(1 − x)`,
+    `${a}x + ${b} − ${b}x = ${c}x + ${d} − ${d}x`,
+    `(${a} − ${b})x + ${b} = (${c} − ${d})x + ${d}`,
+    `${a-b}x + ${b} = ${c-d}x + ${d}`,
+    `(${a-b} − ${c-d})x = ${d} − ${b}`,
+    `${lCoef}x = ${rhs}`,
+  ];
+
+  if (lCoef === 0) {
+    ansEl.innerHTML = rhs === 0
+      ? '<span style="color:var(--accent2)">解なし（恒等式: すべてのxが解）</span>'
+      : '<span class="error-msg">解なし（矛盾）</span>';
+  } else {
+    const x = rhs / lCoef;
+    steps.push(`x = ${rhs} ÷ ${lCoef} = ${x}`);
+    ansEl.textContent = `x = ${frac(rhs, lCoef)} ≈ ${x.toFixed(6)}`;
+  }
+
+  stepsEl.innerHTML = '<div style="margin-top:12px; font-size:0.68rem; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">解法ステップ</div>' +
+    steps.map((s, i) => `<div class="step-item"><span class="step-n">${i+1}</span><span class="step-text">${s}</span></div>`).join('');
+
+  showResult('linear-result');
+}
+
+function frac(num, den) {
+  if (den === 0) return '∞';
+  const g = gcdOf(Math.abs(num), Math.abs(den));
+  const n = num / g, d = den / g;
+  if (d === 1) return String(n);
+  if (d < 0) return `${-n}/${-d}`;
+  return `${n}/${d}`;
+}
+
+// ── 素因数分解 ──
+function calcPrime() {
+  let n = parseInt(document.getElementById('prime-input').value);
+  if (isNaN(n) || n < 2) return;
+
+  const orig = n;
+  const factors = {};
+  const steps = [];
+  let div = 2;
+
+  while (div * div <= n) {
+    while (n % div === 0) {
+      factors[div] = (factors[div] || 0) + 1;
+      steps.push(`${n} ÷ ${div} = ${n / div}`);
+      n /= div;
+    }
+    div++;
+  }
+  if (n > 1) { factors[n] = (factors[n] || 0) + 1; }
+
+  const parts = Object.entries(factors).map(([p, e]) => e > 1 ? `${p}^${e}` : p);
+  document.getElementById('prime-ans').textContent = `${orig} = ${parts.join(' × ')}`;
+  document.getElementById('prime-sub').textContent =
+    `素因数: ${Object.keys(factors).join(', ')}  ｜  約数の個数: ${Object.values(factors).reduce((a,b) => a*(b+1), 1)}`;
+
+  document.getElementById('prime-steps').innerHTML =
+    '<div style="margin-top:14px; font-size:0.68rem; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">割り算の手順</div>' +
+    steps.map((s, i) => `<div class="step-item"><span class="step-n">${i+1}</span><span class="step-text">${s}</span></div>`).join('');
+
+  showResult('prime-result');
+}
+
+// ── GCD / LCM ──
+function gcdOf(a, b) { return b === 0 ? a : gcdOf(b, a % b); }
+function lcmOf(a, b) { return a / gcdOf(a, b) * b; }
+
+function calcGcd() {
+  const nums = document.getElementById('gcd-input').value
+    .trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n > 0);
+  if (nums.length < 2) return;
+
+  const gcd = nums.reduce(gcdOf);
+  const lcm = nums.reduce(lcmOf);
+
+  document.getElementById('gcd-grid').innerHTML = `
+    <div class="result-chip"><div class="chip-label">GCD（最大公約数）</div><div class="chip-val" style="color:var(--accent);font-size:1.3rem">${gcd}</div></div>
+    <div class="result-chip"><div class="chip-label">LCM（最小公倍数）</div><div class="chip-val" style="color:var(--accent2);font-size:1.3rem">${lcm}</div></div>
+    <div class="result-chip"><div class="chip-label">対象の数</div><div class="chip-val">${nums.join(', ')}</div></div>
+  `;
+
+  let stepsHtml = '<br>ユークリッドの互除法（最初の2数）:<br>';
+  let [aa, bb] = [nums[0], nums[1]];
+  const eucSteps = [];
+  while (bb !== 0) {
+    eucSteps.push(`gcd(${aa}, ${bb}) → ${aa} mod ${bb} = ${aa % bb}`);
+    [aa, bb] = [bb, aa % bb];
+  }
+  eucSteps.push(`→ GCD = ${aa}`);
+  document.getElementById('gcd-steps').innerHTML = stepsHtml + eucSteps.join('<br>');
+
+  showResult('gcd-result');
+}
+
+// ── 連立方程式 ──
+function calcSimul() {
+  const a1 = parseFloat(document.getElementById('s-a1').value);
+  const b1 = parseFloat(document.getElementById('s-b1').value);
+  const c1 = parseFloat(document.getElementById('s-c1').value);
+  const a2 = parseFloat(document.getElementById('s-a2').value);
+  const b2 = parseFloat(document.getElementById('s-b2').value);
+  const c2 = parseFloat(document.getElementById('s-c2').value);
+
+  const det = a1*b2 - a2*b1;
+  const grid = document.getElementById('simul-grid');
+  const steps = document.getElementById('simul-steps');
+
+  const eq1 = `${a1}x + ${b1}y = ${c1}`;
+  const eq2 = `${a2}x + ${b2}y = ${c2}`;
+
+  if (det === 0) {
+    grid.innerHTML = `<div class="result-chip"><div class="chip-label">結果</div><div class="chip-val error-msg">解なし または 無数に存在</div></div>`;
+    steps.innerHTML = '';
+    showResult('simul-result');
+    return;
+  }
+
+  const x = (c1*b2 - c2*b1) / det;
+  const y = (a1*c2 - a2*c1) / det;
+
+  grid.innerHTML = `
+    <div class="result-chip"><div class="chip-label">x</div><div class="chip-val" style="color:var(--accent);font-size:1.3rem">${x.toFixed(6)}</div></div>
+    <div class="result-chip"><div class="chip-label">y</div><div class="chip-val" style="color:var(--accent2);font-size:1.3rem">${y.toFixed(6)}</div></div>
+  `;
+
+  steps.innerHTML = `<div style="margin-top:14px; font-size:0.68rem; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">クラメールの公式</div>` + [
+    `行列式 D = ${a1}×${b2} − ${a2}×${b1} = ${det}`,
+    `x = (${c1}×${b2} − ${c2}×${b1}) / D = ${c1*b2 - c2*b1} / ${det} = ${x.toFixed(6)}`,
+    `y = (${a1}×${c2} − ${a2}×${c1}) / D = ${a1*c2 - a2*c1} / ${det} = ${y.toFixed(6)}`,
+    `検証: ${a1}(${x.toFixed(3)}) + ${b1}(${y.toFixed(3)}) = ${(a1*x + b1*y).toFixed(4)}`,
+  ].map((s, i) => `<div class="step-item"><span class="step-n">${i+1}</span><span class="step-text">${s}</span></div>`).join('');
+
+  showResult('simul-result');
+}
+
+// ── ローン計算 ──
+function calcLoan() {
+  const P = parseFloat(document.getElementById('loan-principal').value);
+  const r = parseFloat(document.getElementById('loan-rate').value) / 100 / 12;
+  const n = parseFloat(document.getElementById('loan-years').value) * 12;
+  if ([P, r, n].some(isNaN) || P <= 0 || n <= 0) return;
+
+  let monthly, total, interest;
+  if (r === 0) {
+    monthly = P / n;
+    total = P;
+    interest = 0;
+  } else {
+    monthly = P * r * Math.pow(1+r, n) / (Math.pow(1+r, n) - 1);
+    total = monthly * n;
+    interest = total - P;
+  }
+
+  const fmt = v => Math.round(v).toLocaleString('ja-JP');
+
+  document.getElementById('loan-grid').innerHTML = `
+    <div class="result-chip"><div class="chip-label">月々の返済額</div><div class="chip-val" style="color:var(--accent);font-size:1.2rem">¥${fmt(monthly)}</div></div>
+    <div class="result-chip"><div class="chip-label">総返済額</div><div class="chip-val">¥${fmt(total)}</div></div>
+    <div class="result-chip"><div class="chip-label">支払利息合計</div><div class="chip-val" style="color:var(--error)">¥${fmt(interest)}</div></div>
+    <div class="result-chip"><div class="chip-label">利息割合</div><div class="chip-val">${((interest/total)*100).toFixed(1)}%</div></div>
+  `;
+
+  showResult('loan-result');
+}
+
+// ── 統計 ──
+function calcStat() {
+  const raw = document.getElementById('stat-input').value.trim().replace(/,/g, ' ');
+  const nums = raw.split(/\s+/).map(Number).filter(n => !isNaN(n));
+  if (nums.length === 0) return;
+
+  const n = nums.length;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const sum = nums.reduce((a, b) => a + b, 0);
+  const mean = sum / n;
+  const variance = nums.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+  const sd = Math.sqrt(variance);
+  const median = n % 2 === 0
+    ? (sorted[n/2-1] + sorted[n/2]) / 2
+    : sorted[Math.floor(n/2)];
+
+  const modeMap = {};
+  nums.forEach(v => modeMap[v] = (modeMap[v]||0)+1);
+  const maxFreq = Math.max(...Object.values(modeMap));
+  const modes = Object.entries(modeMap).filter(([,f]) => f===maxFreq).map(([v]) => v);
+
+  const f = v => typeof v === 'number' ? v.toFixed(4) : v;
+
+  document.getElementById('stat-grid').innerHTML = [
+    ['個数 (n)',     n],
+    ['合計',         sum],
+    ['平均',         f(mean)],
+    ['中央値',       f(median)],
+    ['最頻値',       modes.join(', ')],
+    ['分散',         f(variance)],
+    ['標準偏差',     f(sd)],
+    ['最小値',       sorted[0]],
+    ['最大値',       sorted[n-1]],
+    ['範囲',         sorted[n-1] - sorted[0]],
+  ].map(([label, val]) => `
+    <div class="result-chip">
+      <div class="chip-label">${label}</div>
+      <div class="chip-val">${val}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('stat-sorted').textContent = `昇順: ${sorted.join(', ')}`;
+
+  showResult('stat-result');
+}
+
+// Auto-trigger for Eq preview
+document.querySelectorAll('#eq-a,#eq-b,#eq-c,#eq-d').forEach(el => {
+  el.addEventListener('input', updateEqPreview);
+});
+</script>
+</body>
+</html>
